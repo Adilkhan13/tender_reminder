@@ -26,29 +26,77 @@ def samruk_main():
     dct = {"id": [], "type": [], "name": [], "exp_date": [], "price": []}
 
     for key_name in KEY_NAMES:
-        URL = fr"https://zakup.sk.kz/#/ext?tabs=advert&q={key_name}&adst=PUBLISHED&lst=PUBLISHED&page=1"
-        browser.get(URL)
+        adst_list = ["DISCUSSION_PUBLISHED", "PUBLISHED"]
+        for adst in adst_list:
+            URL = fr"https://zakup.sk.kz/#/ext?tabs=advert&q={key_name}&adst={adst}&lst=PUBLISHED&page=1"
+            browser.get(URL)
 
-        WebDriverWait(browser, 10).until(
-            EC.presence_of_element_located(
-                (By.CSS_SELECTOR, ".info.jhi-item-count.ng-star-inserted")
-            )
-        )
-        text = browser.find_element(
-            By.CSS_SELECTOR, ".info.jhi-item-count.ng-star-inserted"
-        ).text
-        row_count = int(max([i for i in re.findall("[0-9]*", text) if i.isdigit()]))
-        pages_count = math.ceil(row_count / 10)
-
-        if pages_count > 1:
-            for page in range(1, pages_count + 1):
-                URL = fr"https://zakup.sk.kz/#/ext?tabs=advert&q={key_name}&adst=PUBLISHED&lst=PUBLISHED&bab={yesterday('sk',int(show_sql(DB_LAG)[0][0]))}&page={page}"
-                browser.get(URL)
-                WebDriverWait(browser, 10).until(
-                    EC.presence_of_element_located(
-                        (By.CSS_SELECTOR, ".m-sidebar.m-sidebar--found-list")
-                    )
+            WebDriverWait(browser, 10).until(
+                EC.presence_of_element_located(
+                    (By.CSS_SELECTOR, ".info.jhi-item-count.ng-star-inserted")
                 )
+            )
+            text = browser.find_element(
+                By.CSS_SELECTOR, ".info.jhi-item-count.ng-star-inserted"
+            ).text
+            row_count = int(max([i for i in re.findall("[0-9]*", text) if i.isdigit()]))
+            pages_count = math.ceil(row_count / 10)
+
+            if pages_count > 1:
+                for page in range(1, pages_count + 1):
+                    URL = fr"https://zakup.sk.kz/#/ext?tabs=advert&q={key_name}&adst={adst}&lst=PUBLISHED&bab={yesterday('sk',int(show_sql(DB_LAG)[0][0]))}&page={page}"
+                    browser.get(URL)
+                    WebDriverWait(browser, 10).until(
+                        EC.presence_of_element_located(
+                            (By.CSS_SELECTOR, ".m-sidebar.m-sidebar--found-list")
+                        )
+                    )
+                    element = browser.find_element(
+                        By.CSS_SELECTOR, ".m-sidebar.m-sidebar--found-list"
+                    )
+                    soup = BeautifulSoup(
+                        element.get_attribute("innerHTML"), "html.parser"
+                    )
+                    list_of_elements = soup.find_all(
+                        class_="m-found-item m-found-item--success"
+                    )
+                    for i in range(len(list_of_elements)):
+                        dct["id"].append(
+                            soup.find_all(class_="m-found-item m-found-item--success")[
+                                i
+                            ]
+                            .find_all("div")[0]
+                            .text
+                        )
+                        dct["type"].append(
+                            soup.find_all(class_="m-found-item m-found-item--success")[
+                                i
+                            ]
+                            .find_all("div")[1]
+                            .text
+                        )
+                        dct["name"].append(
+                            soup.find_all(class_="m-found-item m-found-item--success")[
+                                i
+                            ]
+                            .find_all("h3")[0]
+                            .text
+                        )
+                        dct["exp_date"].append(
+                            soup.find_all(class_="m-found-item m-found-item--success")[
+                                i
+                            ]
+                            .find_all("div")[3]
+                            .text
+                        )
+                        dct["price"].append(
+                            soup.find_all(class_="m-found-item m-found-item--success")[
+                                i
+                            ]
+                            .find_all("div")[4]
+                            .text
+                        )
+            else:
                 element = browser.find_element(
                     By.CSS_SELECTOR, ".m-sidebar.m-sidebar--found-list"
                 )
@@ -82,40 +130,6 @@ def samruk_main():
                         .find_all("div")[4]
                         .text
                     )
-        else:
-            element = browser.find_element(
-                By.CSS_SELECTOR, ".m-sidebar.m-sidebar--found-list"
-            )
-            soup = BeautifulSoup(element.get_attribute("innerHTML"), "html.parser")
-            list_of_elements = soup.find_all(
-                class_="m-found-item m-found-item--success"
-            )
-            for i in range(len(list_of_elements)):
-                dct["id"].append(
-                    soup.find_all(class_="m-found-item m-found-item--success")[i]
-                    .find_all("div")[0]
-                    .text
-                )
-                dct["type"].append(
-                    soup.find_all(class_="m-found-item m-found-item--success")[i]
-                    .find_all("div")[1]
-                    .text
-                )
-                dct["name"].append(
-                    soup.find_all(class_="m-found-item m-found-item--success")[i]
-                    .find_all("h3")[0]
-                    .text
-                )
-                dct["exp_date"].append(
-                    soup.find_all(class_="m-found-item m-found-item--success")[i]
-                    .find_all("div")[3]
-                    .text
-                )
-                dct["price"].append(
-                    soup.find_all(class_="m-found-item m-found-item--success")[i]
-                    .find_all("div")[4]
-                    .text
-                )
     browser.close()
     df = pd.DataFrame(dct)
     df = df.drop_duplicates("id")

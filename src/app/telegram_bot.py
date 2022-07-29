@@ -2,9 +2,11 @@
 import pickle
 from telebot import types
 
+##########
 import sys
 
 sys.path.insert(0, "../parsers")
+##########
 from sql_scripts import show_sql, delete_duplicates_from_sql
 from gz_parser import gos_zakup_main
 from sk_parser import samruk_main
